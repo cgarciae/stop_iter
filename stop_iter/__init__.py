@@ -5,7 +5,7 @@ from typing import Iterable, TypeVar
 
 A = TypeVar('A')
 
-def stop_iter(iterable: Iterable[A]):
+def stop_iter(iterable: Iterable[A], /):
 
   interrupt = False
   def _interrupt_handler(sig, frame):
@@ -23,7 +23,7 @@ def stop_iter(iterable: Iterable[A]):
     signal.signal(signal.SIGINT, current_handler)
     
   
-__version__ = "0.0.1"
+__version__ = "0.0.0"
 
 if __name__ == "__main__":
   import time
