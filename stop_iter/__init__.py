@@ -23,7 +23,7 @@ def stop_iter(iterable: Iterable[A], /):
     signal.signal(signal.SIGINT, current_handler)
     
   
-__version__ = "0.0.0"
+__version__ = "0.2.0"
 
 if __name__ == "__main__":
   import time
