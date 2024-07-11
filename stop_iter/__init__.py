@@ -18,12 +18,14 @@ def stop_iter(iterable: Iterable[A], /):
       if interrupt:
           break
       yield elem
+      if interrupt:
+          break
 
   finally:
     signal.signal(signal.SIGINT, current_handler)
     
   
-__version__ = "0.2.1"
+__version__ = "0.2.2"
 
 if __name__ == "__main__":
   import time
