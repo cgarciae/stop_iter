@@ -24,3 +24,22 @@ for n in stop_iter(integers()):
 
 print("\ninfinity")
 ```
+Also works as a context manager:
+```python
+with stop_iter() as it:
+  for n in integers():
+    print(n)
+    if it.interrupt:
+      break
+```
+And as a decorator:
+```python
+@(it := stop_iter())
+def print_integers():
+  for n in integers():
+    print(n)
+    if it.interrupt:
+      break
+
+print_integers()
+```

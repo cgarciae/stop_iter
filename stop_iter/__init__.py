@@ -14,32 +14,68 @@
 
 
 
+import functools
 import signal
-from typing import Iterable, TypeVar
+from typing import Any, Callable, Iterable, TypeVar, overload
 
 A = TypeVar('A')
+F = TypeVar('F', bound=Callable[..., Any])
 
-def stop_iter(iterable: Iterable[A], /):
+class Missing: ...
+MISSING = Missing()
 
-  interrupt = False
-  def _interrupt_handler(sig, frame):
-    nonlocal interrupt
-    interrupt = True
-  current_handler = signal.signal(signal.SIGINT, _interrupt_handler)
+class InterruptHandler:
+  def __init__(self):
+    self.interrupt = False
+    self.current_handler = None
 
-  try:
-    for elem in iterable:
-      if interrupt:
-          break
-      yield elem
-      if interrupt:
-          break
+  def _interrupt_handler(self, sig, frame):
+    self.interrupt = True
+  
+  def __enter__(self):
+    self.interrupt = False
+    self.current_handler = signal.signal(signal.SIGINT, self._interrupt_handler)
+    return self
+  
+  def __exit__(self, *args):
+    signal.signal(signal.SIGINT, self.current_handler)
+    self.current_handler = None
+    self.interrupt = False
 
-  finally:
-    signal.signal(signal.SIGINT, current_handler)
+  def __del__(self):
+    if self.current_handler:
+      signal.signal(signal.SIGINT, self.current_handler)
+
+  def __call__(self, f: F) -> F:
+    @functools.wraps(f)
+    def stop_iter_wrapper(*args, **kwargs):
+      with self:
+        return f(*args, **kwargs)
+    return stop_iter_wrapper # type: ignore
+  
+  def stop_iter(self, iterable: Iterable[A], /):
+    with self:
+      for elem in iterable:
+        if self.interrupt:
+            break
+        yield elem
+        if self.interrupt:
+            break
+
+@overload
+def stop_iter() -> InterruptHandler: ...
+@overload
+def stop_iter(iterable: Iterable[A], /) -> Iterable[A]: ...
+def stop_iter(iterable: Iterable[A] | Missing = MISSING, /) -> Iterable[A] | InterruptHandler:
+  interrupt_handler = InterruptHandler()
+
+  if isinstance(iterable, Missing):
+    return interrupt_handler
+  else:
+    return interrupt_handler.stop_iter(iterable)
     
   
-__version__ = "0.2.4"
+__version__ = "0.2.5"
 
 if __name__ == "__main__":
   import time
@@ -52,5 +88,24 @@ if __name__ == "__main__":
 
   for n in stop_iter(slow_integers()):
     print(n)
+  
+  print("\ninfinity")
+
+  with stop_iter() as it:
+    for n in slow_integers():
+      if it.interrupt:
+        break
+      print(n)
+    
+  print("\ninfinity")
+
+  @(it := stop_iter())
+  def print_slow_integers():
+    for n in slow_integers():
+      if it.interrupt:
+        break
+      print(n)
+
+  print_slow_integers()
   print("\ninfinity")
 
